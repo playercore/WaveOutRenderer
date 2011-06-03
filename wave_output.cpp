@@ -32,7 +32,7 @@ void CALLBACK CWaveOutput::callback(HWAVEOUT dev, UINT msg, DWORD instance,
       break;
   }
 }
-
+const int ms = 200;
 CWaveOutput::CWaveOutput(int deviceID)
     : m_hdrLock()
     , m_deviceId(deviceID)
@@ -45,6 +45,12 @@ CWaveOutput::CWaveOutput(int deviceID)
     , m_hdrsFree(NULL)
     , m_format()
     , m_event(NULL)
+#ifdef REALTIME
+    , m_firstTick(-1) 
+    , m_sampleStartTime(0)
+    , m_bytePerSec(0)
+    , m_span(0)
+#endif
 {
     m_event = CreateEvent(NULL, TRUE, TRUE, NULL);
     SetEvent(m_event);
@@ -92,6 +98,9 @@ bool CWaveOutput::Init(WAVEFORMATEX* format)
 
     m_format.reset(new BYTE[sizeof(WAVEFORMATEX) + format->cbSize]);
     memcpy(m_format.get(), format, sizeof(WAVEFORMATEX) + format->cbSize);
+#ifdef REALTIME
+    m_bytePerSec = format->nSamplesPerSec * format->nChannels * (format->wBitsPerSample >> 3);
+#endif // REALTIME
     return init();
 }
 
@@ -147,6 +156,36 @@ bool CWaveOutput::Play(IMediaSample* sample)
         return false;    
 
     int dataLen = sample->GetActualDataLength();
+#ifdef REALTIME
+    REFERENCE_TIME start;
+    REFERENCE_TIME stop;
+    sample->GetTime(&start, &stop);
+
+    DWORD tick = GetTickCount();
+    if (-1 == m_firstTick)
+        m_firstTick = tick;
+
+    m_sampleStartTime += dataLen * 1000 / m_bytePerSec;
+    if (tick - m_sampleStartTime > m_firstTick + m_span + ms) //延时超过了阀值
+    {
+        TRACE(L"延时变大了，丢弃\r\n");
+        m_span += 20; 
+//         m_firstTick = tick - (tick - m_sampleStartTime - m_firstTick ) / 2;
+//         m_sampleStartTime = 0;
+        return true;
+    }
+    else if (tick - m_sampleStartTime < m_firstTick + m_span)
+    {
+        TRACE(L"延时变小了\r\n");
+        m_firstTick = tick;
+        m_sampleStartTime = 0;
+        m_span = 0;
+        //return true;
+    }
+    TRACE(L"span = %dms\r\n", m_span);
+
+#endif
+
     HEADER* h = hdrAlloc();
     if (h->buffLen < dataLen)
     {
@@ -239,7 +278,7 @@ void CWaveOutput::wavhdrFree(WAVEHDR* h)
 
 HEADER* CWaveOutput::hdrAlloc()
 {
-    WaitForSingleObject(m_event, -1);
+//     WaitForSingleObject(m_event, -1);
     CAutoLock l(&m_hdrLock);
     boost::shared_ptr<HEADER> hdr;
     if (!m_hdrsFree.empty())
@@ -253,7 +292,7 @@ HEADER* CWaveOutput::hdrAlloc()
         hdr->buffLen = 0;
     }
     m_hdrs.push_front(hdr);
-    if (m_hdrs.size() > 20)
+    if (m_hdrs.size() > 50)
         ResetEvent(m_event);
 
     memset(&hdr->hdr, 0, sizeof(WAVEHDR));
@@ -273,6 +312,6 @@ void CWaveOutput::hdrFree(shared_ptr<HEADER> h)
 
     m_hdrsFree.push_front(*i);
     m_hdrs.erase(i);
-    if (m_hdrs.size() <= 20)
+    if (m_hdrs.size() <= 50)
         SetEvent(m_event);
  }

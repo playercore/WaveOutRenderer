@@ -17,7 +17,7 @@ public:
 	virtual HRESULT CheckMediaType(const CMediaType* mt);
 	virtual HRESULT DoRenderSample(IMediaSample* sample);
     virtual HRESULT BeginFlush();
-//     virtual HRESULT WaitForRenderTime() { return S_OK; };
+    virtual HRESULT WaitForRenderTime() { return S_OK; };
     HRESULT CompleteConnect(IPin* pin);
 
 	HRESULT EndOfStream();

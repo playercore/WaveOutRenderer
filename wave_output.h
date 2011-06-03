@@ -10,6 +10,8 @@
 #include <boost/scoped_array.hpp>
 #include <boost/shared_ptr.hpp>
 
+#define REALTIME
+
 struct IMediaSample;
 struct HEADER
 {
@@ -59,6 +61,13 @@ private:
     std::list<boost::shared_ptr<HEADER>> m_hdrsFree;
     boost::scoped_array<BYTE> m_format;
     HANDLE m_event;
+#ifdef REALTIME
+    DWORD m_firstTick; 
+    int   m_sampleStartTime;
+    int   m_bytePerSec;
+    int   m_span;
+
+#endif
 };
 
 #endif
