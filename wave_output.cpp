@@ -278,7 +278,9 @@ void CWaveOutput::wavhdrFree(WAVEHDR* h)
 
 HEADER* CWaveOutput::hdrAlloc()
 {
-//     WaitForSingleObject(m_event, -1);
+#ifndef REALTIME
+    WaitForSingleObject(m_event, -1);
+#endif
     CAutoLock l(&m_hdrLock);
     boost::shared_ptr<HEADER> hdr;
     if (!m_hdrsFree.empty())

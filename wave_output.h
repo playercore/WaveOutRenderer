@@ -10,7 +10,7 @@
 #include <boost/scoped_array.hpp>
 #include <boost/shared_ptr.hpp>
 
-#define REALTIME
+// #define REALTIME
 
 struct IMediaSample;
 struct HEADER

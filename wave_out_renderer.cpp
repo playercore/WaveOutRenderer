@@ -94,18 +94,20 @@ HRESULT CWaveOutRenderer::CompleteConnect(IPin* pin)
 
 HRESULT CWaveOutRenderer::EndOfStream()
 {
+    HRESULT hr = CBaseRenderer::EndOfStream();
     if (m_outPut)
         m_outPut->Close();
 
-    return CBaseRenderer::EndOfStream();
+    return hr;
 }
 
 HRESULT CWaveOutRenderer::BeginFlush()
 {
+    HRESULT hr = CBaseRenderer::BeginFlush(); 
     if (m_outPut)
-        m_outPut->Flush();
+            m_outPut->Flush();
 
-    return CBaseRenderer::BeginFlush();  
+    return hr;
 }
 
 STDMETHODIMP CWaveOutRenderer::Run(REFERENCE_TIME tStart)
@@ -138,10 +140,11 @@ STDMETHODIMP CWaveOutRenderer::Pause()
 
 STDMETHODIMP CWaveOutRenderer::Stop()
 {
+    HRESULT hr = CBaseRenderer::Stop(); 
     if (m_outPut)
         m_outPut->Close();
 
-	return CBaseRenderer::Stop();
+	return hr;
 };
 
 
@@ -288,8 +291,8 @@ STDAPI DllRegisterServer()
     if (FAILED(hr))  
         return hr;  
 
-    hr = pFM2->RegisterFilter(CLSID_WaveOutRenderer, L"WaveOutRenderer", NULL, 
-        &CLSID_AudioRendererCategory, L"WaveOutRenderer", &regfilter2);  
+    hr = pFM2->RegisterFilter(CLSID_WaveOutRenderer, L"KuGou Renderer", NULL, 
+        &CLSID_AudioRendererCategory, L"KuGou Renderer", &regfilter2);  
     pFM2->Release();  
     return hr;  
 }
@@ -309,7 +312,7 @@ STDAPI DllUnregisterServer()
         return hr;  
 
     hr = pFM2->UnregisterFilter(&CLSID_VideoInputDeviceCategory, 
-        L"WaveOutRenderer", CLSID_WaveOutRenderer);  
+        L"KuGou Renderer", CLSID_WaveOutRenderer);  
     pFM2->Release();  
     return hr;  
 
