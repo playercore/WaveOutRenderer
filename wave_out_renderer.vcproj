@@ -180,11 +180,19 @@
 			>
 		</File>
 		<File
+			RelativePath=".\resource.h"
+			>
+		</File>
+		<File
 			RelativePath=".\wave_out_renderer.cpp"
 			>
 		</File>
 		<File
 			RelativePath=".\wave_out_renderer.h"
+			>
+		</File>
+		<File
+			RelativePath=".\wave_out_renderer.rc"
 			>
 		</File>
 		<File

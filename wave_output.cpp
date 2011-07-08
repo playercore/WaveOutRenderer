@@ -5,7 +5,10 @@
 #include <ks.h>
 #include <ksmedia.h>
 
-#include "../common/debug_util.h"
+#ifdef _USE_GIPS_
+#include "module_common_types.h"
+#include "audio_processing.h"
+#endif
 
 using boost::shared_ptr;
 using boost::scoped_array;
@@ -14,27 +17,26 @@ using std::list;
 void CALLBACK CWaveOutput::callback(HWAVEOUT dev, UINT msg, DWORD instance,
                                     DWORD param1, DWORD param2)
 {
-  WAVEHDR *wHdr;
+  WAVEHDR* hdr;
   switch (msg)
   {
-  case WOM_OPEN:
-      break;
-  case WOM_CLOSE:
-      break;
   case WOM_DONE:
       {
           CWaveOutput* output = reinterpret_cast<CWaveOutput*>(instance);
-          wHdr = reinterpret_cast<WAVEHDR*>(param1);
-          output->wavhdrFree(wHdr);
+          hdr = reinterpret_cast<WAVEHDR*>(param1);
+          output->wavhdrFree(hdr);
       }
       break;
   default:
-      break;
+      {
+          break;
+      }
   }
 }
 const int ms = 200;
 CWaveOutput::CWaveOutput(int deviceID)
     : m_hdrLock()
+    , m_apm(NULL)
     , m_deviceId(deviceID)
     , m_waveOut(0)
     , m_paused(false)
@@ -150,16 +152,27 @@ bool CWaveOutput::Flush()
 bool CWaveOutput::Play(IMediaSample* sample)
 {
     assert(sample && m_waveOut > 0);
-    
     BYTE* data = NULL;
     if (FAILED(sample->GetPointer(reinterpret_cast<BYTE**>(&data))))
         return false;    
 
     int dataLen = sample->GetActualDataLength();
-#ifdef REALTIME
     REFERENCE_TIME start;
     REFERENCE_TIME stop;
     sample->GetTime(&start, &stop);
+
+#ifdef _USE_GIPS_
+    if (m_apm)    
+    {
+        WAVEFORMATEX* format = (WAVEFORMATEX*)m_format.get();
+        webrtc::AudioFrame frame;
+        frame.UpdateFrame(1, WebRtc_UWord32(start / 10000), (WebRtc_Word16*)data, dataLen / 2, 
+            format->nSamplesPerSec, webrtc::AudioFrame::kNormalSpeech,
+            webrtc::AudioFrame::kVadPassive, frame._audioChannel);
+        m_apm->AnalyzeReverseStream(&frame);
+    }
+#endif
+#ifdef REALTIME
 
     DWORD tick = GetTickCount();
     if (-1 == m_firstTick)
@@ -168,7 +181,7 @@ bool CWaveOutput::Play(IMediaSample* sample)
     m_sampleStartTime += dataLen * 1000 / m_bytePerSec;
     if (tick - m_sampleStartTime > m_firstTick + m_span + ms) //延时超过了阀值
     {
-        TRACE(L"延时变大了，丢弃\r\n");
+//         TRACE(L"延时变大了，丢弃\r\n");
         m_span += 20; 
 //         m_firstTick = tick - (tick - m_sampleStartTime - m_firstTick ) / 2;
 //         m_sampleStartTime = 0;
@@ -176,37 +189,37 @@ bool CWaveOutput::Play(IMediaSample* sample)
     }
     else if (tick - m_sampleStartTime < m_firstTick + m_span)
     {
-        TRACE(L"延时变小了\r\n");
+//         TRACE(L"延时变小了\r\n");
         m_firstTick = tick;
         m_sampleStartTime = 0;
         m_span = 0;
         //return true;
     }
-    TRACE(L"span = %dms\r\n", m_span);
+//     TRACE(L"span = %dms\r\n", m_span);
 
 #endif
 
-    HEADER* h = hdrAlloc();
-    if (h->buffLen < dataLen)
+    THeader* h = hdrAlloc();
+    if (h->BuffLen < dataLen)
     {
-        h->buff.reset(new char[dataLen]);
-        h->buffLen = dataLen;
+        h->Buff.reset(new char[dataLen]);
+        h->BuffLen = dataLen;
     }
 
-    memcpy(h->buff.get(), data, dataLen);
+    memcpy(h->Buff.get(), data, dataLen);
 
-    h->hdr.lpData = h->buff.get();
-    h->hdr.dwBufferLength = dataLen;
-    h->hdr.dwBytesRecorded = h->hdr.dwBufferLength;
-    waveOutPrepareHeader(m_waveOut, &h->hdr, sizeof(WAVEHDR));
-    waveOutWrite(m_waveOut, &h->hdr, sizeof(WAVEHDR));
+    h->Hdr.lpData = h->Buff.get();
+    h->Hdr.dwBufferLength = dataLen;
+    h->Hdr.dwBytesRecorded = h->Hdr.dwBufferLength;
+    waveOutPrepareHeader(m_waveOut, &h->Hdr, sizeof(WAVEHDR));
+    waveOutWrite(m_waveOut, &h->Hdr, sizeof(WAVEHDR));
 
-#ifdef _DEBUG
-    sample->GetTime(&h->start, &h->stop);
-    TRACE(L"Play Sample At %lld - %lld, Tick = %dms.\r\n", h->start / 10000, 
-          h->stop / 10000, GetTickCount());
-
-#endif
+// #ifdef _DEBUG
+//     sample->GetTime(&h->start, &h->stop);
+//     TRACE(L"Play Sample At %lld - %lld, Tick = %dms.\r\n", h->start / 10000, 
+//           h->stop / 10000, GetTickCount());
+// 
+// #endif
     return true;
 }
 
@@ -238,16 +251,10 @@ HRESULT CWaveOutput::SetBalance(long byBalance)
         byte left = static_cast<byte>(m_volume);
         byte right = static_cast<byte>(m_volume);
 
-        if (m_balance < 50)
-        {
-            // 消减右声道音量
+        if (m_balance < 50) // 消减右声道音量
             right = (byte)(m_balance / 50.0 * m_volume);
-        }
-        else if (m_balance > 50)
-        {    
-            // 消减左声道音量
+        else if (m_balance > 50) // 消减左声道音量
             left = (byte)((100 - m_balance) / 50.0 * m_volume);
-        }
 
        return waveOutSetVolume(m_waveOut, MAKELONG(left * 655.35, right * 655.35));
     }
@@ -258,17 +265,17 @@ HRESULT CWaveOutput::SetBalance(long byBalance)
 void CWaveOutput::wavhdrFree(WAVEHDR* h)
 {
     CAutoLock l(&m_hdrLock);
-    list<shared_ptr<HEADER>>::iterator i = m_hdrs.begin();
+    list<shared_ptr<THeader>>::iterator i = m_hdrs.begin();
     for(; i != m_hdrs.end(); ++i)
     {
-        if (h == &(*i)->hdr)
+        if (h == &(*i)->Hdr)
         {
-#ifdef _DEBUG
-            TRACE(L"Free Sample At %lld - %lld, Tick = %dms.\r\n", (*i)->start / 10000, 
-                (*i)->stop / 10000, GetTickCount());
-            (*i)->start = 0;
-            (*i)->stop = 0;
-#endif // _DEBUG
+// #ifdef _DEBUG
+//             TRACE(L"Free Sample At %lld - %lld, Tick = %dms.\r\n", (*i)->start / 10000, 
+//                 (*i)->stop / 10000, GetTickCount());
+//             (*i)->start = 0;
+//             (*i)->stop = 0;
+// #endif // _DEBUG
             hdrFree(*i);
             return;
         }
@@ -276,13 +283,13 @@ void CWaveOutput::wavhdrFree(WAVEHDR* h)
     assert(false);
 }
 
-HEADER* CWaveOutput::hdrAlloc()
+THeader* CWaveOutput::hdrAlloc()
 {
 #ifndef REALTIME
     WaitForSingleObject(m_event, -1);
 #endif
     CAutoLock l(&m_hdrLock);
-    boost::shared_ptr<HEADER> hdr;
+    boost::shared_ptr<THeader> hdr;
     if (!m_hdrsFree.empty())
     {
         hdr = m_hdrsFree.front();
@@ -290,20 +297,20 @@ HEADER* CWaveOutput::hdrAlloc()
     }
     else
     {
-        hdr.reset(new HEADER);
-        hdr->buffLen = 0;
+        hdr.reset(new THeader);
+        hdr->BuffLen = 0;
     }
     m_hdrs.push_front(hdr);
     if (m_hdrs.size() > 50)
         ResetEvent(m_event);
 
-    memset(&hdr->hdr, 0, sizeof(WAVEHDR));
+    memset(&hdr->Hdr, 0, sizeof(WAVEHDR));
     return hdr.get();
 }
 
-void CWaveOutput::hdrFree(shared_ptr<HEADER> h)
+void CWaveOutput::hdrFree(shared_ptr<THeader> h)
 {
-    list<shared_ptr<HEADER>>::iterator i = m_hdrs.begin();
+    list<shared_ptr<THeader>>::iterator i = m_hdrs.begin();
     for( ; i != m_hdrs.end(); ++i)
     {
         if ((*i) == h)

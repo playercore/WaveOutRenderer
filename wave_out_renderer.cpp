@@ -1,12 +1,9 @@
-#include <vld.h>
 #include "wave_out_renderer.h"
 
 #include <ks.h>
 #include <ksmedia.h>
 #include <boost/math/special_functions/round.hpp>
 #include <InitGuid.h>
-
-#include "..\common\debug_util.h"
 
 // {590CD56B-B49A-44a7-960C-3A4006DCDA5F}
 DEFINE_GUID(CLSID_WaveOutRenderer,  0x590cd56b, 0xb49a, 0x44a7, 0x96, 0xc, 0x3a,
@@ -26,7 +23,7 @@ static int BasicAudioToVolume(int volume)
 
 CWaveOutRenderer::CWaveOutRenderer(IUnknown* unk, HRESULT* hr)
     : CBaseRenderer(CLSID_WaveOutRenderer, NAME("WaveOutRenderer"), unk, hr)
-    , m_outPut()
+    , m_outPut(new CWaveOutput(0))
 {
 }
 

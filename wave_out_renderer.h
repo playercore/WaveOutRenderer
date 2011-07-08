@@ -13,11 +13,14 @@ public:
     CWaveOutRenderer(IUnknown* unk, HRESULT* hr);
     ~CWaveOutRenderer();
     
+    void SetAPM(webrtc::AudioProcessing* p) { m_outPut->SetAPM(p); }
     HRESULT CheckInputType(const CMediaType* mtIn);
 	virtual HRESULT CheckMediaType(const CMediaType* mt);
 	virtual HRESULT DoRenderSample(IMediaSample* sample);
     virtual HRESULT BeginFlush();
+#ifdef REALTIME
     virtual HRESULT WaitForRenderTime() { return S_OK; };
+#endif
     HRESULT CompleteConnect(IPin* pin);
 
 	HRESULT EndOfStream();

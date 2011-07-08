@@ -1,0 +1,29 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wave_out_renderer", "wave_out_renderer.vcxproj", "{5547189F-742B-4415-883D-9EA1F0BF99FD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug_lib|Win32 = Debug_lib|Win32
+		Debug_Vc100|Win32 = Debug_Vc100|Win32
+		Debug|Win32 = Debug|Win32
+		Release_Lib|Win32 = Release_Lib|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5547189F-742B-4415-883D-9EA1F0BF99FD}.Debug_lib|Win32.ActiveCfg = Debug_lib|Win32
+		{5547189F-742B-4415-883D-9EA1F0BF99FD}.Debug_lib|Win32.Build.0 = Debug_lib|Win32
+		{5547189F-742B-4415-883D-9EA1F0BF99FD}.Debug_Vc100|Win32.ActiveCfg = Debug_Vc100|Win32
+		{5547189F-742B-4415-883D-9EA1F0BF99FD}.Debug_Vc100|Win32.Build.0 = Debug_Vc100|Win32
+		{5547189F-742B-4415-883D-9EA1F0BF99FD}.Debug|Win32.ActiveCfg = Debug|Win32
+		{5547189F-742B-4415-883D-9EA1F0BF99FD}.Debug|Win32.Build.0 = Debug|Win32
+		{5547189F-742B-4415-883D-9EA1F0BF99FD}.Release_Lib|Win32.ActiveCfg = Release_Lib|Win32
+		{5547189F-742B-4415-883D-9EA1F0BF99FD}.Release_Lib|Win32.Build.0 = Release_Lib|Win32
+		{5547189F-742B-4415-883D-9EA1F0BF99FD}.Release|Win32.ActiveCfg = Release|Win32
+		{5547189F-742B-4415-883D-9EA1F0BF99FD}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
